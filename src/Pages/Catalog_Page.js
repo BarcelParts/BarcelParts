@@ -16,6 +16,8 @@ const Catalog_Page = function () {
   const [Categories, setCategories] = useState([]);
   const [Loading, setLoading] = useState(true);
   const [HasMore, setHasMore] = useState('false');
+  const [productImage, setProductImage] = useState("");
+  const [productImageFinal, setProductImageFinal] = useState("");
 
   //Detects when the node(last product) is in the view of the observer and if so loads more products
   const lastProductElementRef = useCallback(node => {
@@ -46,6 +48,23 @@ const Catalog_Page = function () {
         //console.log(response.data)
         //Stores the acquired data in the variable products
         setProducts([...products, ...response.data.products]);
+
+        let productTemp = response.data.products
+        productTemp.map((product,  index) => {
+          
+          triggersearch(product)
+            .then((responseImage) => {
+                //setProducts(product.image = responseImage)
+
+                productTemp[index].image = responseImage 
+
+            })
+
+        })
+
+        setProducts(productTemp);
+
+
         //See is there is more documents in the database
         setHasMore(parseInt(response.data.total_results) - (parseInt(page) + 1) * 28 > 0)
       })
@@ -55,6 +74,27 @@ const Catalog_Page = function () {
       });
   };
 
+
+
+  var key = "AIzaSyBLyzJ-Iwo7iUYgHzfBB_vI-CZWOOuHWuY";
+  var cse = "55a9d94cde9ae4c7a";
+  //Image Api Function
+  async function triggersearch(product) {
+ 
+   // return "https://cdn.appuals.com/wp-content/uploads/2019/08/0aCjoLy.png"
+    const data = await fetch(`https://www.googleapis.com/customsearch/v1?key=${key}&cx=${cse}&q=${product.Ref}` + '&searchType=image')
+
+
+      .then(response => response.json())
+      .then(response => {
+        //setProductImage(response.items[0]['link']);
+        return response.items[0]['link']
+      });
+  }
+
+
+
+
   const find = (query, by, page, sort) => {
     //Call function that will send a get request to the backend
     ProductDataService.find(query, by, page, sort)
@@ -63,6 +103,22 @@ const Catalog_Page = function () {
         //console.log(response)
         //Stores the acquired data in the variable products
         setProducts(response.data.products);
+       
+        let productTemp = response.data.products
+        productTemp.map((product,  index) => {
+          
+          triggersearch(product)
+            .then((responseImage) => {
+                //setProducts(product.image = responseImage)
+
+                productTemp[index].image = responseImage 
+
+            })
+
+        })
+
+        setProducts(productTemp);
+       
         //See is there is more documents in the database
         setHasMore(parseInt(response.data.total_results) - (parseInt(page) + 1) * 20 > 0)
       })
@@ -207,7 +263,7 @@ const Catalog_Page = function () {
                       role="img" viewBox="0 0 250 250" aria-label="Placeholder: Thumbnail" preserveAspectRatio="none"
                       focusable="false">
                       <title>Placeholder</title>
-                      <image width="100%" xlinkHref="./Assets/Images/Blueprint_logo.svg" x="0" y="0" />
+                      <image width="100%" xlinkHref={product.image} x="0" y="0" />
                     </svg>
                   </div>
                   {/* Place where information from each product will be displayed */}
@@ -236,7 +292,7 @@ const Catalog_Page = function () {
                       role="img" viewBox="0 0 250 250" aria-label="Placeholder: Thumbnail" preserveAspectRatio="none"
                       focusable="false">
                       <title>Placeholder</title>
-                      <image width="100%" xlinkHref="./Assets/Images/Blueprint_logo.svg" x="0" y="0" />
+                      <image width="100%" xlinkHref={product.image} x="0" y="0" />
                     </svg>
                   </div>
                   {/* Place where information from each product will be displayed */}

@@ -12,15 +12,19 @@ function Product_Page() {
 
   const [product, setProduct] = useState([]);
   const [number, setNumber] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
+  const [productImage, setProductImage] = useState("");
 
-  const findbyId = (id) => {
+
+  async function findbyId(id) {
     //Call function that will send a get request to the backend
-    ProductDataService.get(id)
+    return ProductDataService.get(id)
       .then(response => {
         //Console log for debugging and developing
         //console.log(response.data)
 
         setProduct(response.data);
+        return response.data
       })
       //If there is an error catches it and displays it in the console
       .catch(e => {
@@ -30,69 +34,96 @@ function Product_Page() {
 
   const onChangeNumber = (value) => {
     setNumber(value);
-    
+
   }
 
-  const AddToCartHandler = () =>{
+  const AddToCartHandler = () => {
     console.log(number)
 
 
   }
 
+  var key = "AIzaSyBLyzJ-Iwo7iUYgHzfBB_vI-CZWOOuHWuY";
+  var cse = "55a9d94cde9ae4c7a";
+  //Image Api Function
+  async function triggersearch(product) {
+    
+    console.log(product)
+    const data = await fetch(`https://www.googleapis.com/customsearch/v1?key=${key}&cx=${cse}&q=${product.Ref}` + '&searchType=image')
+
+
+      .then(response => response.json())
+      .then(response => {
+        setProductImage(response.items[0]['link']);
+       // setProductImage("https://cdn.appuals.com/wp-content/uploads/2019/08/0aCjoLy.png");
+        
+      });
+  }
 
 
   //useEffect to run a function only once since the dependency array is empty
   useEffect(() => {
     //Runs the getCategories function
     findbyId(id)
+      .then((response) => {
+
+        triggersearch(response)
+
+          .then(() => {
+            setIsLoading(false)
+          })
+      })
+
+
   }, [id]) // <-- empty dependency array
 
+  if (isLoading == false) {
+    return (
+      <div className="container-md">
+        <br></br>
+        <div className="row">
+          <div className="col-4">
+            <svg className="bd-placeholder-img card-img-top" width="100%" xmlns="http://www.w3.org/2000/svg"
+              role="img" viewBox="0 0 250 250" aria-label="Placeholder: Thumbnail" preserveAspectRatio="none"
+              focusable="false">
+              <title>Placeholder</title>
+              <image width="100%" xlinkHref={productImage} x="0" y="0" />
+            </svg>
+          </div>
+          <div className="col-8">
+            <h2>{product.Design}</h2>
+            <h3 style={{ 'color': '#00a1b6' }}>{product.PrecoCusto} €</h3>
+            <hr className="break-line"></hr>
+            <div className="Product-Brand">
+              <label style={{ 'fontSize': '1.2rem', 'color': '#00a1b6', 'fontWeight': 'bold' }}>Brand</label> <span>{product.Marca}</span>
+            </div>
+            <div className="Product-Reference">
+              <label style={{ 'fontSize': '1.2rem', 'color': '#00a1b6', 'fontWeight': 'bold' }}>Reference</label> <span>{product.Ref}</span>
+            </div>
+            <div className="Product-Provider">
+              <label style={{ 'fontSize': '1.2rem', 'color': '#00a1b6', 'fontWeight': 'bold' }}>Provider</label> <span>{product.Fornecedor}</span>
+            </div>
+            <br></br>
+            <div className="Product-Description">
+              <p>{product.Description}</p>
+            </div>
+            <div className="qty  mb-1">
+              <NumericInput min={0} max={100} value={number} style={{ input: { width: '4pc', height: '2pc' }, wrap: { marginRight: '2px' } }} onChange={onChangeNumber} />
+              <button type="button" className="btn btn-outline-secondary" onClick={AddToCartHandler}>Add to cart</button>
+            </div>
+            {/* Checks if the product is available in store or not */}
+            {product.NumArmazem > 0
+              ? <p><strong className="d-flex" style={{ 'fontSize': '0.7rem', 'color': '#3eb94f' }}>Available in Store, {product.NumArmazem} left</strong></p>
+              : <p><strong className="d-flex" style={{ 'fontSize': '0.7rem' }}>Not available in Store</strong></p>
+            }
+          </div>
 
-  return (
-    <div className="container-md">
-      <br></br>
-      <div className="row">
-        <div className="col-4">
-          <svg className="bd-placeholder-img card-img-top" width="100%" xmlns="http://www.w3.org/2000/svg"
-            role="img" viewBox="0 0 250 250" aria-label="Placeholder: Thumbnail" preserveAspectRatio="none"
-            focusable="false">
-            <title>Placeholder</title>
-            <image width="100%" xlinkHref="./Assets/Images/Blueprint_logo.svg" x="0" y="0" />
-          </svg>
-        </div>
-        <div className="col-8">
-          <h2>{product.Design}</h2>
-          <h3 style={{ 'color': '#00a1b6' }}>{product.PrecoCusto} €</h3>
-          <hr className="break-line"></hr>
-          <div className="Product-Brand">
-            <label style={{ 'fontSize': '1.2rem', 'color': '#00a1b6', 'fontWeight': 'bold' }}>Brand</label> <span>{product.Marca}</span>
-          </div>
-          <div className="Product-Reference">
-            <label style={{ 'fontSize': '1.2rem', 'color': '#00a1b6', 'fontWeight': 'bold' }}>Reference</label> <span>{product.Ref}</span>
-          </div>
-          <div className="Product-Provider">
-            <label style={{ 'fontSize': '1.2rem', 'color': '#00a1b6', 'fontWeight': 'bold' }}>Provider</label> <span>{product.Fornecedor}</span>
-          </div>
-          <br></br>
-          <div className="Product-Description">
-            <p>{product.Description}</p>
-          </div>
-          <div className="qty  mb-1">
-          <NumericInput min={0} max={100} value={number} style={{ input:{ width: '4pc' , height:'2pc' } ,wrap: {marginRight: '2px'}}} onChange={onChangeNumber}/>
-          <button type="button" className="btn btn-outline-secondary" onClick={AddToCartHandler}>Add to cart</button>
-          </div>
-          {/* Checks if the product is available in store or not */}
-          {product.NumArmazem > 0
-            ? <p><strong className="d-flex" style={{ 'fontSize': '0.7rem', 'color': '#3eb94f' }}>Available in Store, {product.NumArmazem} left</strong></p>
-            : <p><strong className="d-flex" style={{ 'fontSize': '0.7rem' }}>Not available in Store</strong></p>
-          }
         </div>
 
       </div>
+    )
 
-    </div>
-  )
-
+  }
 }
 
 export default Product_Page;

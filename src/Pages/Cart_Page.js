@@ -1,23 +1,107 @@
 import React, { useState, useEffect } from "react";
-import NumericInput from 'react-numeric-input';
-import ProductDataService from "../Services/Barcelparts.js"
+import Barcelparts from "../Services/Barcelparts.js"
 
-function Cart_Page() {
+function Cart_Page(props) {
 
-
-    var forms = document.querySelectorAll('.needs-validation')
-
-    Array.prototype.slice.call(forms)
-        .forEach(function (form) {
-            form.addEventListener('submit', function (event) {
-                if (!form.checkValidity()) {
+    useEffect(() => {
+        var forms = document.querySelectorAll('.needs-validation')
+        Array.prototype.slice.call(forms)
+            .forEach(function (form) {
+                form.addEventListener('submit', async function (event) {
                     event.preventDefault()
-                    event.stopPropagation()
-                }
+                    if (!form.checkValidity()) {
+                        event.preventDefault()
+                        event.stopPropagation()
+                    }
+                    else {
+                        let CarrinhoTemp = [];
+                        let TotalPrice = 0;
 
-                form.classList.add('was-validated')
-            }, false)
-        })
+                        TotalPrice = await Promise.all(props.user.Carrinho.map(async (product) => {
+                            return await Barcelparts.get(product.Product_id)
+                                .then(response => {
+                                    TotalPrice = TotalPrice + parseFloat((response.data.PrecoCusto)) * parseInt(product.Product_amount)
+                                    let CarrinhoTemporary = {}
+                                    CarrinhoTemporary.Product_id = product.Product_id
+                                    CarrinhoTemporary.Product_reference = response.data.Ref
+                                    CarrinhoTemporary.Product_amount = product.Product_amount
+                                    CarrinhoTemp.push(CarrinhoTemporary)
+                                    return TotalPrice
+                                })
+
+                        }))
+
+                        let Order = {
+                            User_FirstName: (new FormData(forms[0])).get("firstName"),
+                            User_LastName: (new FormData(forms[0])).get("lastName"),
+                            User_Id: props.user._id,
+                            Email: props.user.Email,
+                            Carrinho: CarrinhoTemp,
+                            TotalPrice: TotalPrice[TotalPrice.length - 1],
+                            Payment_Method: (new FormData(forms[0])).get("paymentMethod")
+                        }
+
+                        console.log(Order)
+
+                        await Barcelparts.createOrder(JSON.stringify(Order))
+                            .then(response => {
+                                console.log(response)
+                            })
+
+                        var tempUser=props.user;
+
+                        tempUser.Carrinho= [];
+
+                        Barcelparts.updateUser(JSON.stringify(tempUser))
+                            .then(function (result) {
+                                //Prints the result
+                                console.log(result)
+                            })
+
+
+                    }
+                    form.classList.add('was-validated')
+                }, false)
+            })
+    })
+
+    const productHandler = (element_id, product_info) => {
+        Barcelparts.get(product_info.Product_id)
+            .then(response => {
+                var Design = document.getElementById('Design' + element_id);
+                Design.textContent = response.data.Design
+                var Preco = document.getElementById('Preco' + element_id);
+                Preco.textContent = response.data.PrecoCusto
+                var Total = document.getElementById('Total');
+                Total.textContent = (parseFloat(Total.textContent) + parseFloat(response.data.PrecoCusto) * parseInt(product_info.Product_amount)).toFixed(2)
+            })
+            .catch(e => {
+                console.log(e);
+            });
+    }
+
+    //Handler to remove products from the shopping cart
+    const removeItemHandler = (e) => {
+        //Creates a temporary user to apply the alterations
+        var tempUser = props.user;
+        //Removes the product from the array
+        tempUser.Carrinho.splice(parseInt(e.target.id), parseInt(e.target.id) + 1)
+        //Creates the data structure to
+        let data = {
+            _id: tempUser._id,
+            Carrinho: tempUser.Carrinho
+        }
+        //Sends the data to the backend
+        Barcelparts.updateUser(JSON.stringify(data))
+            .then(function (result) {
+                //Prints the result
+                console.log(result)
+            })
+        //Reloads the page to show the results
+        window.location.reload(true)
+    }
+
+
 
     return (
         <div className="container-md">
@@ -26,33 +110,31 @@ function Cart_Page() {
                 <div className="col-md-5 col-lg-4 order-md-last">
                     <h4 className="d-flex justify-content-between align-items-center mb-3">
                         <span className="text-primary">Your cart</span>
-                        <span className="badge bg-primary rounded-pill">3</span>
+                        <span className="badge bg-primary rounded-pill">{props.user == null ? 0 : props.user.Carrinho.length}</span>
                     </h4>
                     <ul className="list-group mb-3">
-                        <li className="list-group-item d-flex justify-content-between lh-sm">
-                            <div>
-                                <h6 className="my-0">Product name</h6>
-                                <small className="text-muted">Brief description</small>
-                            </div>
-                            <span className="text-muted">$12</span>
-                        </li>
-                        <li className="list-group-item d-flex justify-content-between lh-sm">
-                            <div>
-                                <h6 className="my-0">Second product</h6>
-                                <small className="text-muted">Brief description</small>
-                            </div>
-                            <span className="text-muted">$8</span>
-                        </li>
-                        <li className="list-group-item d-flex justify-content-between lh-sm">
-                            <div>
-                                <h6 className="my-0">Third item</h6>
-                                <small className="text-muted">Brief description</small>
-                            </div>
-                            <span className="text-muted">$5</span>
-                        </li>
+                        {props.user.Carrinho.map((product_info, index) => {
+                            return (
+                                <li className="list-group-item d-flex justify-content-between lh-sm" key={index}>
+                                    <div className="d-flex justify-content-between">
+                                        <i id={index} className="fa-solid fa-trash-can" style={{ 'padding-right': '5px' }} onClick={removeItemHandler}></i>
+                                        <div>
+                                            <h6 id={'Design' + index} className="my-0"></h6>
+                                            <small className="text-muted">x{product_info.Product_amount}</small>
+                                        </div>
+                                    </div>
+                                    <span id={'Preco' + index} className="text-muted justify-content-end" onLoad={productHandler(index, product_info)}></span>
+
+                                </li>
+                            )
+                        })}
                         <li className="list-group-item d-flex justify-content-between">
-                            <span>Total (EUR)</span>
-                            <strong>$20</strong>
+                            <span>Total (Eur)</span>
+                            <strong>
+                                <span id="Total">0</span>
+                                <span>€</span>
+                            </strong>
+
                         </li>
                     </ul>
 
@@ -62,40 +144,40 @@ function Cart_Page() {
                     <form className="needs-validation" noValidate>
                         <div className="row g-3">
                             <div className="col-sm-6">
-                                <label for="firstName" className="form-label">First name</label>
-                                <input type="text" className="form-control" id="firstName" placeholder="" value="" required></input>
+                                <label htmlFor="firstName" className="form-label">First name</label>
+                                <input type="text" className="form-control" name="firstName" id="firstName" placeholder="" defaultValue={props.user == null ? "" : props.user.User_FirstName} required></input>
                                 <div className="invalid-feedback">
                                     Valid first name is required.
                                 </div>
                             </div>
 
                             <div className="col-sm-6">
-                                <label for="lastName" className="form-label">Last name</label>
-                                <input type="text" className="form-control" id="lastName" placeholder="" value="" required></input>
+                                <label htmlFor="lastName" className="form-label">Last name</label>
+                                <input type="text" className="form-control" name="lastName" id="lastName" placeholder="" defaultValue={props.user == null ? "" : props.user.User_LastName} required></input>
                                 <div className="invalid-feedback">
                                     Valid last name is required.
                                 </div>
                             </div>
 
                             <div className="col-12">
-                                <label for="email" className="form-label">Email <span className="text-muted">(Optional)</span></label>
-                                <input type="email" className="form-control" id="email" placeholder="you@example.com"></input>
+                                <label htmlFor="email" className="form-label">Email <span className="text-muted">(Optional)</span></label>
+                                <input type="email" className="form-control" name="email" id="email" placeholder="you@example.com" defaultValue={props.user == null ? "" : props.user.Email} readOnly></input>
                                 <div className="invalid-feedback">
                                     Please enter a valid email address for shipping updates.
                                 </div>
                             </div>
 
                             <div className="col-12">
-                                <label for="address" className="form-label">Address</label>
-                                <input type="text" className="form-control" id="address" placeholder="1234 Main St" required></input>
+                                <label htmlFor="address" className="form-label">Address</label>
+                                <input type="text" className="form-control" id="address" placeholder="1234 Main St" defaultValue={props.user == null ? "" : props.user.Address} required></input>
                                 <div className="invalid-feedback">
                                     Please enter your shipping address.
                                 </div>
                             </div>
 
                             <div className="col-md-5">
-                                <label for="country" className="form-label">Country</label>
-                                <select className="form-select" id="country" data-default-value="15" required>
+                                <label htmlFor="country" className="form-label">Country</label>
+                                <select className="form-select" name="country" id="country" defaultValue="15" required>
                                     <option value="">Choose...</option>
                                     <option value="1" data-text="Alemanha" data-iso-code="DE">
                                         Alemanha
@@ -148,7 +230,7 @@ function Cart_Page() {
                                     <option value="14" data-text="Polónia" data-iso-code="PL">
                                         Polónia
                                     </option>
-                                    <option value="15" data-text="Portugal" data-iso-code="PT" selected>
+                                    <option value="15" data-text="Portugal" data-iso-code="PT">
                                         Portugal
                                     </option>
                                     <option value="17" data-text="Reino Unido" data-iso-code="GB">
@@ -167,8 +249,8 @@ function Cart_Page() {
                             </div>
 
                             <div className="col-md-3">
-                                <label for="zip" className="form-label">Zip</label>
-                                <input type="text" className="form-control" id="zip" placeholder="" required></input>
+                                <label htmlFor="zip" className="form-label">Zip</label>
+                                <input type="text" className="form-control" name="zip" id="zip" placeholder="" required></input>
                                 <div className="invalid-feedback">
                                     Zip code required.
                                 </div>
@@ -182,16 +264,20 @@ function Cart_Page() {
 
                         <div className="my-3">
                             <div className="form-check">
-                                <input id="credit" name="paymentMethod" type="radio" className="form-check-input" checked required></input>
-                                <label className="form-check-label" for="credit">Credit card</label>
+                                <input id="credit" name="paymentMethod" type="radio" className="form-check-input" defaultChecked required></input>
+                                <label className="form-check-label" htmlFor="bankTransfer">Bank Transfer</label>
+                            </div>
+                            <div className="form-check">
+                                <input id="credit" name="paymentMethod" type="radio" className="form-check-input" required></input>
+                                <label className="form-check-label" htmlFor="credit">Credit card</label>
                             </div>
                             <div className="form-check">
                                 <input id="debit" name="paymentMethod" type="radio" className="form-check-input" required></input>
-                                <label className="form-check-label" for="debit">Debit card</label>
+                                <label className="form-check-label" htmlFor="debit">Debit card</label>
                             </div>
                             <div className="form-check">
                                 <input id="paypal" name="paymentMethod" type="radio" className="form-check-input" required></input>
-                                <label className="form-check-label" for="paypal">PayPal</label>
+                                <label className="form-check-label" htmlFor="paypal">PayPal</label>
                             </div>
                         </div>
 

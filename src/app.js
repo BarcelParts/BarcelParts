@@ -1,16 +1,19 @@
 //Declares the imports necessary for this page
 import React, { useState, useEffect } from "react";
-import { Link, Route, Routes } from "react-router-dom";
+import { Link, Route, Routes} from "react-router-dom";
 import Main_Page from './Pages/Main_Page';
 import Research_Page from './Pages/Research_Page';
 import Catalog_Page from './Pages/Catalog_Page';
-import Register_Page from './Pages/Register_Page'
+import Register_Page from './Pages/Register_Page';
+import MyData_Page from './Pages/MyData_Page';
 import About_Page from './Pages/About_Page'
 import Logout from "./Services/logout.js";
-import Barcelparts from './Services/Barcelparts.js'
 import Product_Page from './Pages/Product_Page'
 import Cart_Page from './Pages/Cart_Page'
-import { getCookie, IsAuthenticated } from './Services/auth'
+import Owner_Panel from "./Pages/Owner_Panel";
+import { IsAuthenticated } from './Services/auth'
+import ProductDataService from "./Services/Barcelparts.js"
+
 
 //Creates the React function that will be rendered in the index Page
 function App() {
@@ -20,15 +23,30 @@ function App() {
     const [user, setUser] = useState();
     const [isLoading, setIsLoading] = useState(true);
     const [search, setSearch] = useState("");
-    const [search_display, setSearch_display] = useState("");
     const [search_url, setSearch_url] = useState("/Research_Page");
+    const [Categories, setCategories] = useState([]);
 
-//Function that will only run once
+    //Function that will send a get request to the backend to retrieve the categories to display in the page
+    async function getCategories() {
+        ProductDataService.getCategories()
+            .then(response => {
+                //Stores the acquired data in categories variable
+                console.log(response.data)
+                setCategories(response.data);
+                setIsLoading(false)
+            })
+            //If there is any erros catch them and display them
+            .catch(e => {
+                console.log(e);
+            });
+    };
+
+    //Function that will only run once
     useEffect(() => {
         //Calls the function that verifies if the user is logged in and retrieves the user data
         IsAuthenticated()
             .then(response => {
-                console.log(response[0])
+                //console.log(response[0])
                 if (response[0] == true) {
                     setIsAuthenticated(true)
                     setUser(response[1])
@@ -36,7 +54,7 @@ function App() {
                 else {
                     setIsAuthenticated(false)
                 }
-                setIsLoading(false)
+                getCategories()
             })
     }, [])
 
@@ -48,14 +66,7 @@ function App() {
         setSearch_url("/Research_Page?by=Design&query=" + search)
     }
 
-    //Function that handles the search click
-    const SearchHandler = () => {
-        //Calls the find function
-        //sets the Search_display variable 
-        setSearch_display(search)
-    };
 
-    
     //Html that will be rendered 
     if (isLoading == false) {
         return (
@@ -65,39 +76,61 @@ function App() {
                     {/* <!-- Uses the className container fluid to have the navbar expand all the page --> */}
                     <div className="container-fluid ">
                         {/* <!--Creates the logo image --> */}
-                        <a className="navbar-brand"><img className="Logo" src="./Assets/Images/logo.jpeg" alt=""></img></a>
-                        {/* <!-- Have a Separate div to add the Group name in the middle of the navbar --> */}
-                        <div className="navbar-nav first-navbar d-none d-md-block">
-                            <p className="group-brand">Group TRUSTAUTO</p>
+                        <a className="navbar-brand"><img className="Logo" src="/Assets/Images/logo.jpeg" alt=""></img></a>
+                        <div className="group-brand">
+                            {isAuthenticated == true ? (
+                                <p>
+                                    Group TRUSTAUTO - Welcome back, {user.User_FirstName}&nbsp;&nbsp;
+                                    <img className="UserImage" src={user.User_Image} alt=""></img>
+                                </p>
+                            ) : (
+                                <>Group TRUSTAUTO</>
+                            )
+                            }
                         </div>
                         {/* <!-- Creates the Components justified to the end of the page such as Account information and the cart item --> */}
                         <div className="justify-content-end">
                             <ul className="navbar-nav me-auto mb-2 mb-lg-0 first-navbar">
-                                <li className="nav-item ">
-                                    {/* If there is a user display information about account if there is change to a button to create/login to account */}
-                                    {isAuthenticated == true ? (
-                                        <li className="nav-item dropdown">
-                                            <a className="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown"
-                                                aria-expanded="false">
-                                                My Account
-                                            </a>
-                                            <ul className="dropdown-menu" aria-labelledby="navbarDropdown">
-                                                <li><a className="dropdown-item" href="#">My data</a></li>
+                                {/* If there is a user display information about account if there is change to a button to create/login to account */}
+                                {isAuthenticated == true ? (
+                                    <li className="nav-item dropdown">
+                                        <a className="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown"
+                                            aria-expanded="false">
+                                            My Account
+                                        </a>
+                                        <ul className="dropdown-menu" aria-labelledby="navbarDropdown">
+                                            <li><a className="dropdown-item" href="/MyData_Page">My data</a></li>
 
-                                                <li><a className="dropdown-item" href="#">Buying History</a></li>
+                                            <li><a className="dropdown-item" href="#">Buying History</a></li>
+                                            {user.Owner ? (
+                                                <li><a className="dropdown-item" href="/Owner_Panel">Owner Panel</a></li>
+                                            )
+                                                : (
+                                                    <li></li>
+                                                )
 
-                                                <li><a className="dropdown-item" onClick={Logout} href="./">Sign Out</a></li>
-                                            </ul>
-                                        </li>
-                                    ) : (
-                                        <a className="nav-link first-navbar" aria-current="page" href="/Register_Page"> <i className="fa-solid fa-user"></i> Login/Register</a>
-                                    )
-                                    }
+                                            }
 
-                                </li>
+                                            <li><a className="dropdown-item" onClick={Logout} href="./">Sign Out</a></li>
+                                        </ul>
+                                    </li>
+                                ) : (
+                                    <a className="nav-link first-navbar" aria-current="page" href="/Register_Page">
+                                        <div style={{ position: "relative" }}>
+                                            <i className="fa-solid fa-user"></i>
+                                            Login/Register
+                                        </div>
+                                    </a>
+                                )
+                                }
                                 {/* <!-- Cart icon --> */}
                                 <li>
-                                    <a className="nav-link first-navbar" aria-current="page" href="/Cart_Page"> <i className="fa-solid fa-cart-shopping"></i></a>
+                                    <a className="nav-link first-navbar" aria-current="page" href={user ? "/Cart_Page" : "Register_Page?redirect=Cart_Page"}>
+                                        <div style={{ position: "relative" }}>
+                                            <i className="fa-solid fa-cart-shopping" style={{ border: "2px solid #00a1b6", "borderRadius": "50%", padding: "5px" }}></i>
+                                            <span style={{ position: "absolute", right: "-5px", bottom: "18px" }}>{user == null ? 0 : user.Carrinho.length}</span>
+                                        </div>
+                                    </a>
                                 </li>
                             </ul>
                         </div>
@@ -116,7 +149,7 @@ function App() {
                                 {/* Form that will retrieve the search parameter to search the database */}
                                 <form className="d-flex">
                                     <input className="form-control me-2" type="search" value={search} placeholder="Search" onChange={onChangeSearch} aria-label="Search"></input>
-                                    <Link to={search_url} className="btn btn-outline-secondary align-items-center" onClick={SearchHandler} type="button">Search</Link>
+                                    <Link to={search_url} className="btn btn-outline-secondary align-items-center" onClick={true} type="button">Search</Link>
                                 </form>
                             </div>
                             {/* <!-- Adds the hamburger button that will appear when the page is shrunken to display the items in the navbar so it looks cleaner in small screens --> */}
@@ -137,24 +170,31 @@ function App() {
                                         Categories
                                     </a>
                                     <ul className="dropdown-menu" aria-labelledby="navbarDropdown">
-                                        <li><a className="dropdown-item" href="#">Motor</a></li>
-
-                                        <li><a className="dropdown-item" href="#">Transmission</a></li>
-
-                                        <li><a className="dropdown-item" href="#">Light</a></li>
                                         {/* Creates a submenu for the Sub-Categories  */}
-                                        <li className="dropdown-submenu">
-                                            <a href="#" className="dropdown-item dropdown-toggle" data-toggle="dropdown" role="button"
-                                                aria-haspopup="true" aria-expanded="false"> <span className="nav-label">Service C</span><span
-                                                    className="caret"></span></a>
-                                            <ul className="dropdown-menu">
-                                                <li><a className="dropdown-item" href="#">Motor</a></li>
-                                                <li><a className="dropdown-item" href="#">Motor</a></li>
-                                                <li><a className="dropdown-item" href="#">Motor</a></li>
-                                                <li><a className="dropdown-item" href="#">Motor</a></li>
-                                                <li><a className="dropdown-item" href="#">Motor</a></li>
-                                            </ul>
-                                        </li>
+                                        {Categories.Categories.map((Category, index) => {
+                                            if (Categories.SubCategory.length > 0) {
+                                                return (
+                                                    <li className="dropdown-submenu" key={Category}>
+                                                        <a className="dropdown-item" href={"/Research_Page?by=NomeFamilia&query=" + Category} >{Category}</a>
+                                                        <ul className="dropdown-menu">
+                                                            {Categories.SubCategory[index].map((SubCategory) => {
+                                                                return (
+                                                                    <li key={Category + SubCategory}><a className="dropdown-item" href={"/Research_Page?by=NomeFamilia&query=" + SubCategory}>{SubCategory}</a></li>
+                                                                )
+                                                            })
+
+                                                            }
+                                                        </ul>
+                                                    </li>
+
+                                                )
+                                            }
+                                            else {
+                                                return (
+                                                    <li key={Category}><a className="dropdown-item" href={"/Research_Page?by=NomeFamilia&query=" + Category} >{Category}</a></li>
+                                                )
+                                            }
+                                        })}
                                     </ul>
                                 </li>
 
@@ -169,13 +209,13 @@ function App() {
                             {/* <!-- Adds the research form  --> */}
                             <form className="d-flex d-md-none">
                                 <input className="form-control me-2" type="search" value={search} onChange={onChangeSearch} placeholder="Search" aria-label="Search"></input>
-                                <Link to={search_url} className="btn btn-outline-secondary" onClick={SearchHandler} type="button">Search</Link>
+                                <Link to={search_url} className="btn btn-outline-secondary" onClick={true} type="button">Search</Link>
                             </form>
                         </div>
                         {/* <!-- Adds the research form  --> */}
                         <form className="d-none d-lg-flex">
                             <input className="form-control me-2" type="search" value={search} onChange={onChangeSearch} placeholder="Search" aria-label="Search"></input>
-                            <Link to={search_url} className="btn btn-outline-secondary" onClick={SearchHandler} type="button">Search</Link>
+                            <Link to={search_url} className="btn btn-outline-secondary" onClick={true} type="button">Search</Link>
                         </form>
                     </div>
                 </nav>
@@ -188,14 +228,14 @@ function App() {
                         <Route path="/Research_Page" element={<Research_Page />} />
                         <Route path="/Catalog_Page" element={<Catalog_Page />} />
                         <Route path='/Register_Page' element={<Register_Page />} />
-                        <Route path='/About_Page' element={<About_Page />} />
-                        <Route path='/Product_Page' element={<Product_Page />} />
-                        <Route path='/Cart_Page' element={<Cart_Page />} />
+                        <Route path="/MyData_Page" element={<MyData_Page user={user} />} />
+                        <Route exact path='/About_Page' element={<About_Page />} />
+                        <Route path='/Product_Page' element={<Product_Page user={user} />} />
+                        {user ? <Route path='/Owner_Panel/*' element={<Owner_Panel user={user} />} /> : null}
+                        {user ? <Route exact path='/Cart_Page' element={<Cart_Page user={user} />} /> : null}
+                        <Route path="*" element={<p>There's nothing here: 404!</p>} />
                     </Routes>
                 </div>
-
-
-
 
                 {/* <!-- Code for footer --> */}
                 <svg xmlns="http://www.w3.org/2000/svg" style={{ display: 'flow-root', height: '70px' }}>
@@ -221,7 +261,7 @@ function App() {
                         {/* <!-- Adds the logo and company name  --> */}
                         <div className="col-md-2 d-flex align-items-center">
                             <a href="/" className="mb-3 me-2 mb-md-0 text-muted text-decoration-none lh-1 navbar-brand">
-                                <img className="Logo-footer" src="./Assets/Images/Logo.jpeg" alt=""></img>
+                                <img className="Logo-footer" src="/Assets/Images/Logo.jpeg" alt=""></img>
                             </a>
                             <span className="text-muted">BarcelParts</span>
                         </div>
@@ -246,7 +286,7 @@ function App() {
         return (
             <div className="loader-wrapper">
                 <div className="loader">
-                    <img  src="./Assets/Images/logo_noBackground.svg" />
+                    <img src="/Assets/Images/logo_noBackground.svg" />
                 </div>
             </div>
         )
